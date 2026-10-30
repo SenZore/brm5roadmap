@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070b11"/>
+      <stop offset="0.55" stop-color="#0e1521"/>
+      <stop offset="1" stop-color="#131c2b"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#facc15"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#26354d" stroke-width="1" opacity="0.45"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <ellipse cx="600" cy="120" rx="520" ry="260" fill="url(#glow)"/>
+
+  <g stroke="url(#line)" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.9">
+    <path d="M120 500 C 300 470, 340 380, 470 400 S 640 300, 760 330 S 940 240, 1080 170"/>
+  </g>
+
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <g fill="#070b11" stroke="#2ecc71" stroke-width="6">
+      <circle cx="120" cy="500" r="16"/>
+      <circle cx="470" cy="400" r="16"/>
+      <circle cx="760" cy="330" r="16"/>
+    </g>
+    <g fill="#070b11" stroke="#f39c12" stroke-width="6">
+      <circle cx="300" cy="452" r="14"/>
+      <circle cx="620" cy="360" r="14"/>
+    </g>
+    <g fill="#070b11" stroke="#e74c3c" stroke-width="6">
+      <circle cx="900" cy="278" r="14"/>
+    </g>
+    <circle cx="1080" cy="170" r="22" fill="#070b11" stroke="#facc15" stroke-width="8"/>
+
+    <text x="80" y="140" font-size="74" font-weight="700" fill="#e6edf7" letter-spacing="-1">BRM5 Roadmap</text>
+    <text x="82" y="196" font-size="30" font-weight="500" fill="#38bdf8">Sawang &#183; Ronograd</text>
+    <text x="82" y="248" font-size="24" fill="#8ea0bc">Interactive mission map &#183; pan, zoom, inspect</text>
+
+    <g font-size="20" fill="#8ea0bc">
+      <circle cx="86" cy="580" r="8" fill="#2ecc71"/><text x="104" y="587">Easy</text>
+      <circle cx="196" cy="580" r="8" fill="#f39c12"/><text x="214" y="587">Medium</text>
+      <circle cx="330" cy="580" r="8" fill="#e74c3c"/><text x="348" y="587">Extreme</text>
+      <circle cx="466" cy="580" r="8" fill="#facc15"/><text x="484" y="587">Goal</text>
+    </g>
+  </g>
+</svg>
