@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BRM5 Interactive Mission Roadmap: Sawang & Ronograd (Pan & Zoom)</title>
+  <style>
+    :root {
+      --bg: #070b11;
+      --panel: #0e1521;
+      --card: #131c2b;
+      --card-hover: #1b283e;
+      --border: #26354d;
+      --text: #e6edf7;
+      --muted: #8ea0bc;
+      --easy: #2ecc71;
+      --medium: #f39c12;
+      --hard: #e67e22;
+      --extreme: #e74c3c;
+      --event: #a855f7;
+      --cyan: #38bdf8;
+      --gold: #facc15;
+      --pink: #f472b6;
+      --orange: #fb923c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    header {
+      background: #0b111b;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      z-index: 100;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+      flex-shrink: 0;
+    }
+
+    .header-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .title-area h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge-ver {
+      font-size: 0.68rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 700;
+    }
+
+    .stats-bar { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .stat-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    .stat-pill strong { color: #fff; margin-left: 3px; }
+
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .tabs, .filters { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+    .btn, .select, .input {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .btn { cursor: pointer; transition: 0.15s; }
+    .btn:hover { border-color: var(--cyan); color: #fff; }
+    .btn.active { background: rgba(56,189,248,0.18); border-color: var(--cyan); color: var(--cyan); }
+    .btn.r-pink.active { background: rgba(244,114,182,0.2); border-color: var(--pink); color: var(--pink); }
+    .btn.r-gold.active { background: rgba(250,204,21,0.2); border-color: var(--gold); color: var(--gold); }
+    .btn.r-orange.active { background: rgba(251,146,60,0.2); border-color: var(--orange); color: var(--orange); }
+
+    .legend-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding: 6px 18px;
+      background: #06090e;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.73rem;
+      color: var(--muted);
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+    /* VIEWS */
+    .view-section {
+       display: none;
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+    }
+    .view-section.active { display: block; }
+
+    /* INTERACTIVE PAN & ZOOM VIEWPORT */
+    #v-roadmap.active {
+      display: block;
+      overflow: hidden;
+      cursor: grab;
+      background-color: #070b11;
+      background-image:
+        radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.03), transparent 70%),
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    #v-roadmap.panning {
+      cursor: grabbing !important;
+    }
+
+    #canvas-world {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+      padding: 40px 60px 100px 60px;
+    }
+
+    /* FLOATING CANVAS HUD */
+    .canvas-hud-left {
+      position: fixed;
+      bottom: 18px;
+      left: 18px;
+      z-index: 90;
+      background: rgba(11, 17, 27, 0.9);
+      border: 1px solid var(--border);
+      padding: 8px 13px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+
+    .canvas-hud-right {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 90;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: rgba(11, 17, 27, 0.92);
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      border-radius: 8px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    }
+
+    .zoom-readout {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--cyan);
+      min-width: 48px;
+      text-align: center;
+    }
+
+    .stage-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 0.4px;
+    }
+
+    .roadmap-stage {
+      position: relative;
+      display: grid;
+      gap: 22px 52px;
+      padding-bottom: 30px;
+      margin-bottom: 54px;
+    }
+
+    .stage-sawang {
+      grid-template-columns: repeat(9, 245px);
+      width: 2621px;
+    }
+
+    .stage-ronograd {
+      grid-template-columns: repeat(8, 245px);
+      width: 2324px;
+    }
+
+    .col-hdr {
+      grid-row: 1;
+      font-size: 0.73rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      background: #0d1420;
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      border-radius: 5px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .svg-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      overflow: visible;
+    }
+
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -24; }
+    }
+
+    .flow-line-active {
+      stroke-dasharray: 8, 4;
+      animation: dashFlow 0.75s linear infinite;
+    }
+
+    /* MISSION CARD */
+    .m-card {
+      position: relative;
+      z-index: 2;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      padding: 11px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.18s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    }
+
+    .m-card:hover {
+      transform: translateY(-3px);
+      background: var(--card-hover);
+      border-color: var(--cyan);
+      box-shadow: 0 8px 24px rgba(56,189,248,0.28);
+    }
+
+    .m-card.dim { opacity: 0.18; filter: grayscale(70%); }
+    .m-card.hl-dfts { border-color: var(--pink); box-shadow: 0 0 16px rgba(244,114,182,0.38); }
+    .m-card.hl-azorian { border-color: var(--gold); box-shadow: 0 0 16px rgba(250,204,21,0.42); }
+    .m-card.hl-m723 { border-color: var(--cyan); box-shadow: 0 0 16px rgba(56,189,248,0.38); }
+    .m-card.hl-groza { border-color: var(--orange); box-shadow: 0 0 16px rgba(251,146,60,0.42); }
+    .m-card.hover-linked { border-color: #fff; box-shadow: 0 0 18px rgba(255,255,255,0.4); }
+
+    .m-card.done {
+      border-color: var(--easy);
+      background: linear-gradient(160deg, rgba(46,204,113,0.15), var(--card) 70%);
+    }
+
+    .m-card.ready:not(.done) {
+      border-color: #60a5fa;
+      box-shadow: 0 0 12px rgba(96,165,250,0.3);
+    }
+
+    .m-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+    .m-title { font-size: 0.88rem; font-weight: 700; color: #fff; line-height: 1.2; }
+
+    .chk {
+      width: 19px;
+      height: 19px;
+      border-radius: 4px;
+      border: 1.5px solid var(--muted);
+      background: rgba(0,0,0,0.35);
+      color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      flex-shrink: 0;
+    }
+
+    .chk:hover { border-color: var(--easy); }
+
+    .m-card.done .chk {
+      background: var(--easy);
+      border-color: var(--easy);
+      color: #041d0e;
+      font-weight: 900;
+    }
+
+    .m-badges { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+    .diff {
+      font-size: 0.63rem;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .d-EASY { background: var(--easy); color: #052010; }
+    .d-MEDIUM { background: var(--medium); color: #231300; }
+    .d-HARD { background: var(--hard); color: #fff; }
+    .d-EXTREME { background: var(--extreme); color: #fff; }
+    .d-EVENT { background: var(--event); color: #fff; }
+
+    .giver-pill {
+      font-size: 0.65rem;
+      color: var(--muted);
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .m-need { font-size: 0.68rem; color: #94a3b8; }
+    .m-desc { font-size: 0.73rem; color: #cbd5e1; }
+    .m-rew {
+      font-size: 0.71rem;
+      color: #6ee7b7;
+      font-weight: 600;
+      margin-top: auto;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(255,255,255,0.08);
+    }
+
+    .loot-tag {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: rgba(250,204,21,0.16);
+      color: var(--gold);
+      border: 1px solid rgba(250,204,21,0.4);
+      display: inline-block;
+    }
+
+    /* DRAWER */
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      display: none;
+    }
+    .backdrop.open { display: block; }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -540px;
+      width: 100%;
+      max-width: 520px;
+      height: 100vh;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      z-index: 210;
+      overflow-y: auto;
+      padding: 20px;
+      transition: right 0.22s ease;
+      box-shadow: -10px 0 32px rgba(0,0,0,0.85);
+      user-select: text;
+    }
+    .drawer.open { right: 0; }
+
+    .d-sec {
+      margin-top: 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .d-sec h3 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--cyan);
+      margin-bottom: 6px;
+    }
+
+    .d-list { padding-left: 18px; font-size: 0.83rem; }
+    .d-list li { margin-bottom: 5px; }
+
+    .quote {
+      font-size: 0.8rem;
+      color: #d1d5db;
+      background: #080c12;
+      border-left: 3px solid var(--cyan);
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 6px;
+      white-space: pre-line;
+    }
+
+    .chip {
+      display: inline-block;
+      background: #1e293b;
+      color: var(--cyan);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin: 2px 4px 2px 0;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--cyan); color: #fff; }
+
+    /* OTHER TABS */
+    .container { max-width: 1320px; margin: 0 auto; padding: 24px 20px 60px; user-select: text; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-top: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; margin-top: 14px; }
+    .box { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; padding: 16px; }
+    .box h2 { font-size: 1.05rem; color: #fff; margin-bottom: 8px; }
+
+    .table-wrap { overflow-x: auto; margin-top: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 9px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #101929; color: var(--cyan); text-transform: uppercase; font-size: 0.72rem; }
+    tr:hover { background: rgba(255,255,255,0.03); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="title-area">
+      <h1>
+        BRM5 INTERACTIVE ROADMAP: SAWANG & RONOGRAD
+        <span class="badge-ver">Release 10.0.2 • Pan & Zoom Canvas</span>
+      </h1>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-pill">Done: <strong id="st-done">0 / 43</strong></div>
+      <div class="stat-pill">Credits: <strong id="st-cr" style="color:#4ade80">$0</strong></div>
+      <div class="stat-pill">EXP: <strong id="st-xp" style="color:#60a5fa">0</strong></div>
+      <div class="stat-pill">Const. Mat: <strong id="st-cm">0</strong></div>
+      <div class="stat-pill">Rare Metals: <strong id="st-rm">0</strong></div>
+      <div class="stat-pill">Equipment: <strong id="st-eq">0</strong></div>
+    </div>
+  </div>
+
+  <div class="controls-bar">
+    <div class="tabs">
+      <button class="btn active" onclick="setTab('both', this)">🗺️ Both Roadmaps</button>
+      <button class="btn" onclick="setTab('sawang', this)">🌴 Sawang Only (28)</button>
+      <button class="btn" onclick="setTab('ronograd', this)">❄️ Ronograd Only (15)</button>
+      <button class="btn" onclick="setTab('guides', this)">🪂 MP5SD & Groza Guides</button>
+      <button class="btn" onclick="setTab('locations', this)">📍 All 32 Locations</button>
+      <button class="btn" onclick="setTab('table', this)">📋 Master Table</button>
+    </div>
+
+    <div class="filters">
+      <button class="btn active" id="rt-all" onclick="setRoute('all')">All Routes</button>
+      <button class="btn r-pink" id="rt-dfts" onclick="setRoute('dfts')">🩷 Death From The Sky (MP5SD)</button>
+      <button class="btn r-gold" id="rt-azorian" onclick="setRoute('azorian')">⌚ Azorian Watch</button>
+      <button class="btn" id="rt-m723" onclick="setRoute('m723')">🔫 Model 723</button>
+      <button class="btn r-orange" id="rt-groza" onclick="setRoute('groza')">🔥 Solo Op (Groza)</button>
+
+      <select class="select" id="f-diff" onchange="filterNodes()">
+        <option value="ALL">All Difficulties</option>
+        <option value="EASY">Easy</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HARD">Hard</option>
+        <option value="EXTREME">Extreme</option>
+        <option value="EVENT">Raids / Events</option>
+      </select>
+
+      <input type="text" class="input" id="f-search" placeholder="Search mission, gun, POI..." oninput="filterNodes()" />
+      <button class="btn" onclick="clearSaved()">Reset [✓]</button>
+    </div>
+  </div>
+</header>
+
+<div class="legend-bar">
+  <span><i class="dot" style="background:var(--easy)"></i>Easy</span>
+  <span><i class="dot" style="background:var(--medium)"></i>Medium</span>
+  <span><i class="dot" style="background:var(--hard)"></i>Hard</span>
+  <span><i class="dot" style="background:var(--extreme)"></i>Extreme</span>
+  <span><i class="dot" style="background:var(--event)"></i>World Raid / Event</span>
+  <span><i class="dot" style="border:2px solid #60a5fa"></i>Ready to Unlock</span>
+  <span style="margin-left:auto;color:var(--cyan)">🖱️ <strong>Right-Click + Drag</strong> (or Left-Drag) to Move • <strong>Scroll Wheel</strong> to Zoom • <strong>Click Card</strong> for Walkthrough</span>
+</div>
+
+<!-- INTERACTIVE ROADMAP CANVAS VIEW -->
+<section id="v-roadmap" class="view-section active">
+  <div id="canvas-world">
+
+    <div id="wrap-sawang">
+      <div class="stage-title">🌴 KINGDOM OF SAWANG ROADMAP — Operation Typhoon (26 Missions + 2 World Raids)</div>
+      <div class="roadmap-stage stage-sawang" id="stage-sawang">
+        <svg class="svg-layer" id="svg-sawang"></svg>
+        <div class="col-hdr" style="grid-column:1">Tier 1 • Start</div>
+        <div class="col-hdr" style="grid-column:2">Tier 2 • Foothold</div>
+        <div class="col-hdr" style="grid-column:3">Tier 3 • Expansion</div>
+        <div class="col-hdr" style="grid-column:4">Tier 4 • Escalation</div>
+        <div class="col-hdr" style="grid-column:5">Tier 5 • R&R / Royal</div>
+        <div class="col-hdr" style="grid-column:6">Tier 6 • Deep Cover</div>
+        <div class="col-hdr" style="grid-column:7">Tier 7 • MERCURY-2</div>
+        <div class="col-hdr" style="grid-column:8">Tier 8 • Containment</div>
+        <div class="col-hdr" style="grid-column:9">Tier 9 • Finale</div>
+      </div>
+    </div>
+
+    <div id="wrap-ronograd">
+      <div class="stage-title">❄️ RONOGRAD ISLAND ROADMAP — Operation Phoenix / Resurgence (13 Missions + 2 Bunker Raids)</div>
+      <div class="roadmap-stage stage-ronograd" id="stage-ronograd">
+        <svg class="svg-layer" id="svg-ronograd"></svg>
+        <div class="col-hdr" style="grid-column:1">Tier 1 • Crash Site</div>
+        <div class="col-hdr" style="grid-column:2">Tier 2 • Kozlovka</div>
+        <div class="col-hdr" style="grid-column:3">Tier 3 • Depot</div>
+        <div class="col-hdr" style="grid-column:4">Tier 4 • Quarry</div>
+        <div class="col-hdr" style="grid-column:5">Tier 5 • Radar & Dump</div>
+        <div class="col-hdr" style="grid-column:6">Tier 6 • HVTs & Hospital</div>
+        <div class="col-hdr" style="grid-column:7">Tier 7 • Fort & Naval</div>
+        <div class="col-hdr" style="grid-column:8">Tier 8 • Finale & Bunker</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FLOATING CONTROLS HUD -->
+  <div class="canvas-hud-left" id="hud-left">
+    🖱️ <strong>Right-Click + Drag</strong> (or Left-Drag): Pan Map &nbsp;|&nbsp; ⚙️ <strong>Scroll Up/Down</strong>: Zoom to Cursor &nbsp;|&nbsp; 🔍 <strong>Hover Card</strong>: Trace Links
+  </div>
+
+  <div class="canvas-hud-right" id="hud-right">
+    <button class="btn" onclick="focusSection('sawang')" title="Focus camera on Sawang">🌴 Sawang</button>
+    <button class="btn" onclick="focusSection('ronograd')" title="Focus camera on Ronograd">❄️ Ronograd</button>
+    <button class="btn" onclick="zoomBy(-0.15)" title="Zoom Out">➖</button>
+    <span class="zoom-readout" id="zoom-label">75%</span>
+    <button class="btn" onclick="zoomBy(0.15)" title="Zoom In">➕</button>
+    <button class="btn" onclick="resetCamera(0.75)" title="Reset View">100%</button>
+    <button class="btn" onclick="fitToScreen()" title="Fit Active Roadmap to Screen">⛶ Fit</button>
+  </div>
+</section>
+
+<!-- GUIDES VIEW -->
+<section id="v-guides" class="view-section">
+  <div class="container">
+    <div class="grid-2">
+      <div class="box" style="border-color:var(--pink)">
+        <h2>🪂 SAWANG FINALE: Death From The Sky (MP5SD Route)</h2>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">
+          <strong>Difficulty:</strong> EXTREME | <strong>Giver:</strong> Ops Dir. R.M. Dulles | <strong>Reward:</strong> MP5SD + 2,500 Cr + 2,500 EXP + 5 Equipment
+        </p>
+        <h3 style="font-size:0.8rem;color:var(--cyan);margin:8px 0 4px;">Safe 12-Mission Unlock Order (Dual Branch):</h3>
+        <ol class="d-list">
+          <li><strong>First Step</strong> (Clear Nathon Town & HVTs)</li>
+          <li><strong>Midnight Rendezvous</strong> (CSEL radio call with Nick Pines)</li>
+          <li><strong>Positive Signal</strong> (Radio tower key + 120s broadcast defense)</li>
+          <li><strong>Enemy of my Enemy</strong> (Protect Santa Lilla mansion defectors 180s)</li>
+          <li><strong>Delivery Service</strong> (Drive supply truck past Docks road)</li>
+          <li><strong>Beach Holiday</strong> (Windy Gulf Hotel B001, B009, B107 photos + G002 laptop)</li>
+          <li><strong>[World Event] R&R Pharma Plant</strong> (Gas mask reactor shutdown)</li>
+          <li><strong>Aftermath</strong> (Escort Nick & Weiss to R&R Lab, hold 120s, grab hard drive)</li>
+          <li><strong>My House, My Rules</strong> (Stealth sabotage heli, arrest Richard Duke at Manor)</li>
+          <li><strong>Weiss Returns</strong> (Pick up Weiss near Trench Camp -> UNS Athens briefing)</li>
+          <li><strong>Attack on Sawang City</strong> (Dragon Hotel roof in &lt;10 mins, confront Duke)</li>
+          <li><strong>Imposed Embargo</strong> (Hack Docks PC 90s, photo 4 containers, clear Docks)</li>
+          <li><em>Optional/NamuWiki Branch:</em> <strong>Sea Sick</strong> (Rescue Dr. Lakewell on SW cargo ship)</li>
+          <li><strong>Death From The Sky</strong> (Paradrop onto INSOLON San Antonio-class LPD!)</li>
+        </ol>
+        <h3 style="font-size:0.8rem;color:var(--cyan);margin:10px 0 4px;">Tactical Walkthrough & Farming Meta:</h3>
+        <ul class="d-list">
+          <li><strong>Low Parachute Pull:</strong> Meet Nick Pines on the UNS Athens flight deck. Pull your parachute right above the stern deck of the INSOLON ship so deck AI cannot shoot you out of the sky.</li>
+          <li><strong>2-Minute Heli Warning:</strong> Push inside the hangar immediately—an enemy reinforcement helicopter lands troops on the rear deck ~2 minutes after touchdown.</li>
+          <li><strong>3 VIPs + Control Room AA:</strong> Use Frag Grenades (~30–40 for solo) and let Nick Pines (infinite HP) tank doorways. Kill the 3 VIPs (+500 Cr/EXP each), disable Anti-Air in the bridge control room, then reach the hostage.</li>
+          <li><strong>80s Extraction Holdout:</strong> Survive 80 seconds of infinite reinforcements, throw smoke on the deck, and board the extraction heli.</li>
+        </ul>
+      </div>
+
+      <div class="box" style="border-color:var(--orange)">
+        <h2>🔥 RONOGRAD FINALE: Solo Operation (OTs-14-1A Groza Route)</h2>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">
+          <strong>Difficulty:</strong> EXTREME | <strong>Giver:</strong> Anonymous Sender | <strong>Reward:</strong> OTs-14-1A Groza + 3,000 Cr + 3,000 EXP
+        </p>
+        <h3 style="font-size:0.8rem;color:var(--cyan);margin:8px 0 4px;">Complete 9-Mission Unlock Order:</h3>
+        <ol class="d-list">
+          <li><strong>Blackhawk Rescue</strong> (EASY – Rescue downed crew at Pushkino & blow wreck)</li>
+          <li><strong>Pinpoint</strong> (EASY – Eliminate the high-caliber sniper at Kozlovka)</li>
+          <li><strong>Wartime Audit</strong> (MEDIUM – Grab Depot manifest & C4 the tanks/munitions)</li>
+          <li><strong>Uranium Fever</strong> (MEDIUM – Collect yellowcake sample inside the Quarry mine)</li>
+          <li><strong>Mount Pandora</strong> (HARD – Raid Mountain Radar Station for HDD, bag & folder)</li>
+          <li><strong>In Cahoots</strong> (MEDIUM – Eliminate 2 HVTs in Ronograd City)</li>
+          <li><strong>Priority Target</strong> (HARD – Eliminate the PoD liaison HVT in Lesdolina)</li>
+          <li><strong>Sleight of Hand</strong> (HARD – Infiltrate Fort Ronograd admin records room for Hospital/Bunker 5 files)</li>
+          <li><strong>Solo Operation</strong> (EXTREME – Clear the entire Naval Base solo!)</li>
+        </ol>
+        <h3 style="font-size:0.8rem;color:var(--cyan);margin:10px 0 4px;">Naval Base Solo Tips:</h3>
+        <ul class="d-list">
+          <li><strong>Stealth First:</strong> Clear the crane snipers, watchtowers, and outer container yards with a suppressed sniper rifle before triggering the compound alarm.</li>
+          <li><strong>Objective Persistence:</strong> Like all Ronograd compounds, completed sub-objectives at Naval Base remain saved even if the compound resets.</li>
+          <li><strong>Underground Submarine Pen:</strong> Watch out for Smokers and shotgunners in the lower submarine repair dockyard.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOCATIONS VIEW -->
+<section id="v-locations" class="view-section">
+  <div class="container">
+    <h2 style="margin-bottom:10px;">🏝️ All 32 Sawang & Ronograd Map Locations</h2>
+    <div class="grid-3" id="loc-grid"></div>
+  </div>
+</section>
+
+<!-- MASTER TABLE VIEW -->
+<section id="v-table" class="view-section">
+  <div class="container">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Done</th>
+            <th>Map</th>
+            <th>Mission Name</th>
+            <th>Diff</th>
+            <th>Giver</th>
+            <th>Prerequisites</th>
+            <th>Location</th>
+            <th>Rewards</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- DRAWER -->
+<div class="backdrop" id="backdrop" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div id="drawer-body"></div>
+</aside>
+
+<script>
+const MISSIONS = [
+  // ================= SAWANG MISSIONS (26 + 2 RAIDS) =================
+  {
+    id: "first_step", map: "Sawang", col: 1, row: 3, diff: "MEDIUM",
+    name: "First Step", giver: "Ops Dir. R.M. Dulles", loc: "Nathon Town",
+    prereqs: [], cr: 1000, xp: 1000, cm: 5, rm: 0, eq: 0, loot: "",
+    routes: ["dfts", "azorian", "m723"],
+    desc: "Eliminate the HVTs meeting in Nathon Town and clear the town.",
+    steps: ["Travel from UNS Athens to Nathon Town.", "Eliminate the HVTs in the main building.", "Clear remaining militia to unlock Nathon Town as a Safehouse."],
+    tips: ["Flank from the beaches to avoid coastal lookouts.", "Patch 10.0.2 added boat spawners to Nathon Town beach."],
+    quote: "Dulles: Eliminate the VIPs and clear the town so we can get a solid foothold onto the island."
+  },
+  {
+    id: "midnight_rendezvous", map: "Sawang", col: 1, row: 6, diff: "EASY",
+    name: "Midnight Rendezvous", giver: "Mister Fixer", loc: "Coast near Docks",
+    prereqs: [], cr: 500, xp: 500, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["dfts", "m723"],
+    desc: "Collect a CSEL radio, move to high ground, and contact Nick Pines.",
+    steps: ["Pick up the CSEL radio at the coastal drop.", "Move to higher ground for signal.", "Listen to Nick Pines' transmission."],
+    tips: ["Keep low near the Docks so snipers don't spot you."],
+    quote: "Nick Pines: Good to see you're still in one piece—but you're too late for the people of Sawang."
+  },
+  {
+    id: "positive_signal", map: "Sawang", col: 2, row: 2, diff: "MEDIUM",
+    name: "Positive Signal", giver: "Crown Princess Bayu", loc: "Radio Station (Near Port)",
+    prereqs: ["first_step"], cr: 1200, xp: 1200, cm: 8, rm: 0, eq: 0, loot: "",
+    routes: ["dfts", "azorian"],
+    desc: "Capture the radio station, get the tower key, and broadcast the Princess's speech for 120s.",
+    steps: ["Climb the radio tower to get the station key.", "Restore power at the exterior fuse box.", "Press 'Start Broadcast' on the mic and hold the room for 120s."],
+    tips: ["Block the doorway with an armored vehicle; leaving the room pauses the timer."],
+    quote: "Princess Bayu: Find the broadcasting centre near the Port and ensure my voice reaches every corner of the island."
+  },
+  {
+    id: "threading_the_needle", map: "Sawang", col: 2, row: 3, diff: "MEDIUM",
+    name: "Threading the Needle", giver: "Mister Fixer", loc: "Offshore Wind Farm",
+    prereqs: ["first_step"], cr: 2400, xp: 2400, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Fly a helicopter through six offshore wind turbines (+20s timer in 10.0.2).",
+    steps: ["Spawn a nimble helicopter (HR 530F recommended).", "Fly through all 6 offshore wind turbines before the timer expires."],
+    tips: ["Destroy SAM batteries first or bring flares for the 4th turbine."],
+    quote: "Mister Fixer: Take one of your fancy helicopters and put your flight skills to the test!"
+  },
+  {
+    id: "attack_on_sawang_city", map: "Sawang", col: 2, row: 5, diff: "EXTREME",
+    name: "Attack on Sawang City", giver: "Ops Dir. R.M. Dulles", loc: "Sawang City (Dragon Hotel)",
+    prereqs: ["first_step", "midnight_rendezvous"], cr: 1500, xp: 1500, cm: 0, rm: 0, eq: 0,
+    loot: "Model 723 + M4 Suppressor + 5000 XD Sight",
+    routes: ["dfts", "m723"],
+    desc: "Reach the Dragon Hotel roof within 10 minutes and confront Richard Duke.",
+    steps: ["Enter Sawang Maha Nakhon (10-minute timer starts).", "Clear the 4th and 6th floors of the Dragon Hotel.", "Confront KISMET CEO Richard Duke on the roof, then exit the city."],
+    tips: ["Parachute onto the Dragon Hotel from a flare helicopter to beat the 10-minute timer easily."],
+    quote: "Dulles: Push through fast enough to reach the Dragon Hotel before Duke escapes."
+  },
+  {
+    id: "express_shipping", map: "Sawang", col: 2, row: 6, diff: "MEDIUM",
+    name: "Express Shipping", giver: "Mister Fixer", loc: "Docks & Samut Sai",
+    prereqs: ["midnight_rendezvous"], cr: 2000, xp: 2000, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Collect three high-priority MELENCORP packages at the Docks and Samut Sai.",
+    steps: ["Grab Parcel #1 in Docks Warehouse 1 (wire spool).", "Grab Parcel #2 in Docks Warehouse 2 (near washing machine).", "Grab Parcel #3 in Samut Sai Warehouse (2nd floor right row)."],
+    tips: ["Use stealth; both compounds have heavy armor patrols."],
+    quote: "Mister Fixer: MELENCORP needs someone to retrieve three high-priority packages from their warehouses."
+  },
+  {
+    id: "delivery_service", map: "Sawang", col: 2, row: 7, diff: "EASY",
+    name: "Delivery Service", giver: "Mister Fixer", loc: "Docks Road -> Lab House",
+    prereqs: ["midnight_rendezvous"], cr: 400, xp: 400, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["dfts"],
+    desc: "Drive a cargo truck of supplies to Mister Fixer's secret clients.",
+    steps: ["Get in the mission cargo truck.", "Drive past the Docks road to the clients' safehouse."],
+    tips: ["The mission truck has extra health; don't stop for road patrols."],
+    quote: "Mister Fixer: Deliver the hardware to our clients' safehouse."
+  },
+  {
+    id: "sins_of_the_father", map: "Sawang", col: 3, row: 1, diff: "MEDIUM",
+    name: "Sins of the Father", giver: "Crown Princess Bayu", loc: "Royal Bank (Sawang City)",
+    prereqs: ["positive_signal"], cr: 1400, xp: 1400, cm: 0, rm: 2, eq: 0,
+    loot: "Azorian Date Limited Edition Watch",
+    routes: ["azorian"],
+    desc: "Secure the gold reserves at the Royal Bank and recover King Bayu's ledger.",
+    steps: ["Breach the Royal Bank in Sawang City.", "Confirm the gold reserves in the vault.", "Recover King Bayu's ledger and deliver it to the journalist contact."],
+    tips: ["Only 3 missions required to unlock the gold Azorian Date Limited Edition watch!"],
+    quote: "Princess Bayu: Secure our reserves, and find King Bayu's ledger."
+  },
+  {
+    id: "enemy_of_my_enemy", map: "Sawang", col: 3, row: 2, diff: "MEDIUM",
+    name: "Enemy of my Enemy", giver: "Ops Dir. R.M. Dulles", loc: "Santa Lilla Mansion",
+    prereqs: ["positive_signal"], cr: 1250, xp: 1250, cm: 5, rm: 0, eq: 0, loot: "",
+    routes: ["dfts"],
+    desc: "Protect the defecting criminal VIPs at the Santa Lilla mansion for 180s and extract them.",
+    steps: ["Reach the top floor of the Santa Lilla mansion.", "Defend the high-vis vest defectors for 180 seconds.", "Extract the surviving VIPs to UNS Athens."],
+    tips: ["VIP death = mission fail. Extract by boat to avoid road ambushes."],
+    quote: "Dulles: Get there and protect our contacts—I'm sure they'll make themselves identifiable."
+  },
+  {
+    id: "operation_cleanup", map: "Sawang", col: 3, row: 3, diff: "EASY",
+    name: "Operation Cleanup", giver: "Crown Princess Bayu", loc: "Near Lake Safehouse",
+    prereqs: ["positive_signal"], cr: 800, xp: 800, cm: 8, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Destroy 3 construction machines and eliminate Manifest Ventures' real estate agent.",
+    steps: ["Destroy 3 construction vehicles near Lake Safehouse.", "Eliminate the Manifest Ventures real estate agent."],
+    tips: ["Fastest way to earn 8 Construction Materials."],
+    quote: "Princess Bayu: Destroy the construction equipment and capture the real estate firm's agent."
+  },
+  {
+    id: "market_rescue", map: "Sawang", col: 3, row: 4, diff: "MEDIUM",
+    name: "Market Rescue", giver: "Ops Dir. R.M. Dulles", loc: "South Sawang Warehouse",
+    prereqs: ["attack_on_sawang_city"], cr: 1100, xp: 1100, cm: 0, rm: 0, eq: 5, loot: "",
+    routes: [],
+    desc: "Collect two duffle bags (was three) in the warehouse and escort the driver to safety.",
+    steps: ["Collect Duffle Bag #1 (trash pile) and Duffle Bag #2 (far right table).", "Escort the logistics driver to safety."],
+    tips: ["Patch 10.0.1 lowered the requirement from 3 bags to 2 bags."],
+    quote: "Dulles: Rescue the driver and secure the cargo."
+  },
+  {
+    id: "imposed_embargo", map: "Sawang", col: 3, row: 5, diff: "EXTREME",
+    name: "Imposed Embargo", giver: "Ops Dir. R.M. Dulles", loc: "Port of Sawang (Docks)",
+    prereqs: ["attack_on_sawang_city"], cr: 2500, xp: 2500, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["dfts"],
+    desc: "Hack the Docks warehouse PC (90s), photograph 4 containers, and clear the Docks.",
+    steps: ["Hack the warehouse PC and hold for 90s.", "Open 4 shipping containers and photograph contents.", "Eliminate all hostiles and VIPs at the Docks."],
+    tips: ["Mandatory EXTREME prerequisite for Death From The Sky."],
+    quote: "Dulles: Your orders are simple: Clear the Dockyard of all hostiles."
+  },
+  {
+    id: "glitter_bombs", map: "Sawang", col: 3, row: 6, diff: "MEDIUM",
+    name: "Glitter Bombs", giver: "Mister Fixer", loc: "KISMET Compound",
+    prereqs: ["express_shipping"], cr: 2000, xp: 2000, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Locate KISMET's operations manager following the MELENCORP parcel trail.",
+    steps: ["Infiltrate the KISMET compound.", "Locate KISMET's operations manager and exfiltrate."],
+    tips: ["NamuWiki lists Delivery Service/Positive Signal as alternate prereq."],
+    quote: "Mister Fixer: Track down KISMET's operations manager."
+  },
+  {
+    id: "classic_rescue", map: "Sawang", col: 4, row: 1, diff: "MEDIUM",
+    name: "Classic Rescue", giver: "Crown Princess Bayu", loc: "Banana Plantation",
+    prereqs: ["sins_of_the_father"], cr: 1000, xp: 1000, cm: 8, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Recover the royal ledger at the Banana Plantation, hold 90s, and rescue the journalist.",
+    steps: ["Recover the royal ledger at the Banana Plantation.", "Defend for 90 seconds.", "Free the kidnapped journalist and extract."],
+    tips: ["Use NVGs/thermals to spot enemies in the banana trees."],
+    quote: "Princess Bayu: Retrieve this hero to our country. Of course, the royal ledger must also be accounted for."
+  },
+  {
+    id: "beach_holiday", map: "Sawang", col: 4, row: 2, diff: "HARD",
+    name: "Beach Holiday", giver: "Ops Dir. R.M. Dulles", loc: "Windy Gulf Hotel",
+    prereqs: ["enemy_of_my_enemy", "delivery_service"], cr: 1000, xp: 1000, cm: 0, rm: 0, eq: 5, loot: "",
+    routes: ["dfts"],
+    desc: "Search the Windy Gulf Hotel after rumors of civilian torture and take Fletcher's laptop.",
+    steps: ["Collect B1 guest book.", "Photograph Rooms B001, B009, and B107.", "Take Fletcher's laptop in Room G002 (3F) and deliver to the lab house."],
+    tips: ["Enemy spawns are infinite once alerted—rush the rooms and leave fast."],
+    quote: "Dulles: They talk about something vague and terrible being done to tourists and staff."
+  },
+  {
+    id: "pharma_event", map: "Sawang", col: 4, row: 3, diff: "EVENT",
+    name: "[World Event] Pharma Plant", giver: "Server Alert", loc: "R&R Laboratory",
+    prereqs: [], cr: 500, xp: 500, cm: 0, rm: 2, eq: 0,
+    loot: "Unlocks Aftermath & HEL Good Ending",
+    routes: ["dfts"],
+    desc: "Enter the gas-filled R&R Pharma Plant, turn valves, and shut down the reactor.",
+    steps: ["Equip a Gas Mask + filters.", "Disable power, turn containment valves, and shut down the reactor."],
+    tips: ["Must happen before Aftermath can be started! Pays 500 Cr + 2 Precious Metals (10.0.2)."],
+    quote: "Server Alert: Contain the chemical leak at the R&R Pharmaceuticals Plant."
+  },
+  {
+    id: "royal_repo", map: "Sawang", col: 5, row: 1, diff: "HARD",
+    name: "Royal Repo", giver: "Crown Princess Bayu", loc: "Royal Manor Garage",
+    prereqs: ["classic_rescue"], cr: 3000, xp: 3000, cm: 0, rm: 6, eq: 0, loot: "",
+    routes: [],
+    desc: "Retrieve the Princess's family Mithra GT race car from Royal Manor within 5 minutes.",
+    steps: ["Clear Royal Manor and open the garage.", "Drive the Mithra GT race car carefully to the coastal drop-off within 5 minutes."],
+    tips: ["Clear the road checkpoint before getting in the fragile race car. (Lowered to 800 Cr first-clear in 10.0.2)."],
+    quote: "Princess Bayu: The vehicle must be retrieved, in good condition, and secured immediately offshore."
+  },
+  {
+    id: "aftermath", map: "Sawang", col: 5, row: 2, diff: "MEDIUM",
+    name: "Aftermath", giver: "Mister Fixer / Dulles", loc: "R&R Laboratory",
+    prereqs: ["beach_holiday", "pharma_event"], cr: 1750, xp: 1750, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["dfts"],
+    desc: "Escort Nick Pines and Dr. Weiss into the R&R Laboratory for samples and a hard drive.",
+    steps: ["Meet Nick and Weiss at the house near Banana Plantation.", "Drive the van to R&R Lab and defend Weiss for 120s.", "Grab the office hard drive and return to the ransacked house."],
+    tips: ["Bring gas mask filters and let Nick Pines (infinite HP) tank KISMET mercs."],
+    quote: "Mister Fixer: Escort our clients safely through the ruins so they can gather information."
+  },
+  {
+    id: "power_problems", map: "Sawang", col: 5, row: 3, diff: "HARD",
+    name: "Power Problems", giver: "Crown Princess Bayu", loc: "Substation & Wind Turbine",
+    prereqs: ["classic_rescue", "operation_cleanup"], cr: 2500, xp: 2500, cm: 0, rm: 0, eq: 0,
+    loot: "MSSRT Circular Patches",
+    routes: [],
+    desc: "Capture the Royal Parliament faction leader at the substation and disarm turbine bombs.",
+    steps: ["Secure Sawang City, then raid the substation and extract the VIP.", "Disarm the bombs on the offshore wind turbine (cut wires left-to-right)."],
+    tips: ["Table lists 500 Cr, individual mission page lists 2,500 Cr."],
+    quote: "Princess Bayu: Capture the leader of a rogue faction operating under the Royal Parliament."
+  },
+  {
+    id: "antibodies", map: "Sawang", col: 6, row: 1, diff: "HARD",
+    name: "Antibodies", giver: "Crown Princess Bayu", loc: "Central Sawang Hospital",
+    prereqs: ["royal_repo", "beach_holiday"], cr: 1200, xp: 1000, cm: 10, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Search Central Sawang Hospital: two 30s hacks, 4F keycard, and photo of Fletcher's notes.",
+    steps: ["Grab 1F grant proposal.", "Hack Wing A & Wing B PCs (30s each).", "Grab 4F keycard under microscope, take 3F elevator to roof, and photo Fletcher's notes."],
+    tips: ["Hospital INSOLON guards have boosted health."],
+    quote: "Princess Bayu: Search its archives for the company's original proposal for Royal backing."
+  },
+  {
+    id: "my_house_my_rules", map: "Sawang", col: 6, row: 2, diff: "HARD",
+    name: "My House, My Rules", giver: "Crown Princess Bayu", loc: "Royal Manor Guest Villa",
+    prereqs: ["aftermath"], cr: 1600, xp: 1600, cm: 0, rm: 0, eq: 5,
+    loot: "Royal Sawang Flag Patches",
+    routes: ["dfts"],
+    desc: "Stealth-sabotage Duke's helicopter, get the villa keys, arrest Richard Duke, and bring him to UNS Athens.",
+    steps: ["Stealthily sabotage Duke's helicopter (wire minigame).", "Grab villa & 2F saferoom keys and hold 120s.", "Arrest Richard Duke and bring him to UNS Athens."],
+    tips: ["Stealth is only required until the helicopter is sabotaged!"],
+    quote: "Princess Bayu: By the authority of the Crown, I order you to clear my guest villa and capture that fool."
+  },
+  {
+    id: "weiss_returns", map: "Sawang", col: 7, row: 2, diff: "EASY",
+    name: "Weiss Returns", giver: "Ops Dir. R.M. Dulles", loc: "Near Trench Camp -> UNS Athens",
+    prereqs: ["my_house_my_rules"], cr: 2000, xp: 2000, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["dfts"],
+    desc: "Pick up Dr. Weiss near the Trench Camp and bring her to the UNS Athens briefing room.",
+    steps: ["Meet Dr. Weiss near Trench Camp.", "Bring her to UNS Athens and listen to her briefing room meeting with Dulles."],
+    tips: ["Free 2,000 Cr / 2,000 EXP with almost zero combat."],
+    quote: "Dulles: Weiss had conditions, but she's ready to come back to the UNIDB."
+  },
+  {
+    id: "containment_protocol", map: "Sawang", col: 8, row: 1, diff: "EASY",
+    name: "Containment Protocol", giver: "Dr. Petra Weiss", loc: "Farmland East of Sawang City",
+    prereqs: ["weiss_returns"], cr: 1000, xp: 1000, cm: 0, rm: 0, eq: 0, loot: "1× Operator Token",
+    routes: [],
+    desc: "Take chemical readings of the farmland east of Sawang Maha Nakhon (wiki page swapped).",
+    steps: ["Visit the 3 downwind farmland zones east of Sawang City.", "Record chemical contamination readings."],
+    tips: ["Fandom Wiki swapped the article text of Containment Protocol and Safety Inspection pt. 2."],
+    quote: "Dr. Weiss: Investigate contamination on farmland downwind. Get readings, take samples."
+  },
+  {
+    id: "safety_inspection_pt2", map: "Sawang", col: 8, row: 2, diff: "MEDIUM",
+    name: "Safety Inspection, pt. 2", giver: "Dr. Petra Weiss", loc: "Sawang Maha Nakhon",
+    prereqs: ["weiss_returns"], cr: 800, xp: 800, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Fly an M.Q.I.U. by cargo helicopter to Sawang Maha Nakhon. Kill the SAM batteries first.",
+    steps: ["Destroy SAM batteries around Sawang City.", "Sling-load the M.Q.I.U. with a CH-47 and drop it on the detonation site."],
+    tips: ["Cargo heli has no flares—destroy SAMs before lifting!"],
+    quote: "Dr. Weiss: Take a cargo helicopter, pick up the M.Q.I.U., and drop it off in Sawang City."
+  },
+  {
+    id: "deep_end_pt4", map: "Sawang", col: 8, row: 3, diff: "MEDIUM",
+    name: "The Deep End, pt. 4", giver: "Dr. Petra Weiss", loc: "Sawang Nuclear/Chem Site",
+    prereqs: ["weiss_returns"], cr: 2400, xp: 2400, cm: 1, rm: 0, eq: 0, loot: "1× Operator Token",
+    routes: [],
+    desc: "Escort Dr. Weiss while she collects hazardous nuclear/chemical material.",
+    steps: ["Escort Dr. Weiss in the field while she collects hazardous samples.", "Secure the extraction point."],
+    tips: ["Continues The Deep End, pt. 3 from Zombies mode."],
+    quote: "Dr. Weiss: Escort me while I collect the samples."
+  },
+  {
+    id: "sea_sick", map: "Sawang", col: 8, row: 4, diff: "HARD",
+    name: "Sea Sick", giver: "Dr. Petra Weiss", loc: "Cargo Ship (3km SW of UNS Athens)",
+    prereqs: ["weiss_returns"], cr: 1200, xp: 1200, cm: 0, rm: 0, eq: 0,
+    loot: "MSSRT Rectangle Patches",
+    routes: ["dfts"],
+    desc: "Board the container cargo ship SW of UNS Athens and rescue Dr. Lakewell.",
+    steps: ["Board the ship via stern ladders and clear mercs.", "Sabotage bridge comms.", "Cut lock on Lakewell's cell in lower hold and wait 80s at the bow."],
+    tips: ["No infinite enemy respawns once the ship garrison is cleared!"],
+    quote: "Dr. Weiss: They're in Fletcher's latest laboratory on a container ship."
+  },
+  {
+    id: "death_from_the_sky", map: "Sawang", col: 9, row: 4, diff: "EXTREME",
+    name: "Death From The Sky", giver: "Ops Dir. R.M. Dulles", loc: "INSOLON San Antonio-class Ship",
+    prereqs: ["imposed_embargo", "weiss_returns", "sea_sick"], cr: 2500, xp: 2500, cm: 0, rm: 0, eq: 5,
+    loot: "MP5SD Submachine Gun",
+    routes: ["dfts"],
+    desc: "Paradrop onto the INSOLON San Antonio-class warship, kill 3 VIPs, disable AA, and rescue the hostage.",
+    steps: ["Meet Nick Pines on UNS Athens flight deck and parachute onto rear of INSOLON ship.", "Eliminate 3 VIPs, reach control room, and disable anti-air.", "Reach hostage, survive 80s extraction timer, and board heli."],
+    tips: ["Pull chute low! Bring ~35 frag/smoke grenades, Vitamins, and let Nick Pines (infinite HP) tank corridors."],
+    quote: "Dulles: We get you both on board fast with a paradrop, you eliminate the enemy anti-air, then we capture the ship."
+  },
+  {
+    id: "hel_lab_raid", map: "Sawang", col: 9, row: 6, diff: "EVENT",
+    name: "[Finale] HEL Lab Raid", giver: "Ops Dir. R.M. Dulles", loc: "Hoftstadter Exploratory Labs",
+    prereqs: ["pharma_event"], cr: 5000, xp: 4000, cm: 0, rm: 0, eq: 0,
+    loot: "Rescue King Bayu + $1,500 Vaccines",
+    routes: [],
+    desc: "Server finale raid unlocked 10m after liberating all 11 Sawang Conflict Zones.",
+    steps: ["Defend parking lot hack (40s) and ride cargo lift.", "Clear HAZMAT Atrium, flip power (30s), get Executive Suite keycard & photo board.", "Clear Clean Room, destroy Stryker, and breach Sublevel-4 to rescue King Bayu."],
+    tips: ["Good Ending (5,000 Cr) requires R&R Pharma Event success; Bad Ending pays 3,000 Cr."],
+    quote: "Dulles: Priority objectives: secure Objective Typhoon. Detain all HVTs. Recover King Bayu. Remember Ronograd."
+  },
+
+  // ================= RONOGRAD MISSIONS (13 + 2 RAIDS) =================
+  {
+    id: "rono_blackhawk", map: "Ronograd", col: 1, row: 2, diff: "EASY",
+    name: "Blackhawk Rescue", giver: "Ops Dir. R.M. Dulles", loc: "Pushkino",
+    prereqs: [], cr: 600, xp: 600, cm: 8, rm: 0, eq: 0, loot: "",
+    routes: ["groza"],
+    desc: "Locate the crew of a downed Black Hawk helicopter at Pushkino and destroy the wreck.",
+    steps: ["Find the crash site at Pushkino (must not be secured yet).", "Locate survivors on 3rd floor of rightmost building.", "Clear Pushkino, plant explosives on the helicopter wreck, and leave."],
+    tips: ["The pilot has infinite HP; the two PL5 escorts can die without failing the mission."],
+    quote: "Dulles: Head to their last known location, recover any survivors, and destroy the wreck."
+  },
+  {
+    id: "rono_conv_store", map: "Ronograd", col: 1, row: 4, diff: "HARD",
+    name: "CONVENIENCE STORE RESCUE", giver: "Anonymous Sender", loc: "Ronograd City (Zoya's Supermart)",
+    prereqs: [], cr: 600, xp: 600, cm: 0, rm: 0, eq: 0, loot: "Legacy / Non-Canon Challenge",
+    routes: [],
+    desc: "Eliminate Kazimir inside Zoya's Supermart convenience store in Ronograd City.",
+    steps: ["Reach Ronograd City on a private server.", "Locate Zoya's Supermart near the bridge.", "Eliminate Kazimir inside the store and leave."],
+    tips: ["Non-canon Easter egg mission referencing Lt. Kazimir Sava (archived in 10.0.0)."],
+    quote: "Anonymous Sender: Go to my shop and eliminate him."
+  },
+  {
+    id: "rono_pinpoint", map: "Ronograd", col: 2, row: 2, diff: "EASY",
+    name: "Pinpoint", giver: "Ops Dir. R.M. Dulles", loc: "Kozlovka",
+    prereqs: ["rono_blackhawk"], cr: 600, xp: 600, cm: 8, rm: 0, eq: 0, loot: "",
+    routes: ["groza"],
+    desc: "Eliminate the high-caliber sniper in Kozlovka who shot down the Black Hawk.",
+    steps: ["Travel to Kozlovka.", "Locate and eliminate the sniper armed with a high-caliber rifle.", "Leave the area."],
+    tips: ["Canonically takes place on March 6, 2024."],
+    quote: "Dulles: Search the town and neutralize the shooter. I want this guy dealt with."
+  },
+  {
+    id: "rono_wartime_audit", map: "Ronograd", col: 3, row: 2, diff: "MEDIUM",
+    name: "Wartime Audit", giver: "Ops Dir. R.M. Dulles", loc: "Depot -> FOB",
+    prereqs: ["rono_pinpoint"], cr: 600, xp: 600, cm: 5, rm: 0, eq: 0, loot: "5× Fuel on Repeat",
+    routes: ["groza"],
+    desc: "Search the warehouses at the Depot for the RLF equipment manifest and blow up the tanks.",
+    steps: ["Reach the Depot and collect the Equipment Manifest (3×5) inside the warehouse.", "Plant explosives on the old tanks and munitions cache.", "Return to FOB and place the dossier on the HQ desk."],
+    tips: ["Make sure you have a 3×5 slot free in your backpack for the manifest."],
+    quote: "Dulles: Search the warehouses at the Depot to determine the RLF's strength."
+  },
+  {
+    id: "rono_uranium_fever", map: "Ronograd", col: 4, row: 2, diff: "MEDIUM",
+    name: "Uranium Fever", giver: "Ops Dir. R.M. Dulles", loc: "Quarry -> FOB",
+    prereqs: ["rono_wartime_audit"], cr: 600, xp: 600, cm: 0, rm: 2, eq: 0, loot: "",
+    routes: ["groza"],
+    desc: "Collect a yellowcake uranium sample inside the Quarry mine and bring it to FOB.",
+    steps: ["Reach the Quarry and enter the underground mine tunnels.", "Collect the Yellowcake Sample (4×2, 5kg).", "Return to FOB and place it on the HQ desk."],
+    tips: ["Bring a flashlight/NVGs for the dark underground mineshafts."],
+    quote: "Dulles: Take a sample of uranium at the Quarry."
+  },
+  {
+    id: "rono_legacy", map: "Ronograd", col: 5, row: 1, diff: "MEDIUM",
+    name: "Legacy of Contamination", giver: "Dr. Lakewell", loc: "Dept. of Utilities & Depot Hill -> FOB",
+    prereqs: ["rono_uranium_fever"], cr: 1000, xp: 1500, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: [],
+    desc: "Measure contamination at dumping sites near Utilities and Depot and bring a sample to Lakewell.",
+    steps: ["Take readings at the pond and pit near Department of Utilities.", "Collect the yellowcake sample at the dumping site on the hill near the Depot.", "Return to FOB and place the sample in Dr. Lakewell's portable lab near the helipads."],
+    tips: ["Introduces Dr. Lakewell (MERCURY-2 Novel Biothreat Research Unit)."],
+    quote: "Dr. Lakewell: Agents have noted the RLF disposing of yellow barrels in both established dumping grounds and new locations."
+  },
+  {
+    id: "rono_mount_pandora", map: "Ronograd", col: 5, row: 3, diff: "HARD",
+    name: "Mount Pandora", giver: "Ops Dir. R.M. Dulles", loc: "Mountain Radar Station -> FOB",
+    prereqs: ["rono_uranium_fever"], cr: 600, xp: 600, cm: 0, rm: 0, eq: 0, loot: "",
+    routes: ["groza"],
+    desc: "Raid the Mountain Radar Station for the hard drive, duffle bag, and PoD intelligence folder.",
+    steps: ["Assault the Mountain Radar Station.", "Collect the External Harddrive (3×3) from the radar dome, Duffel Bag (3×5) from underground command center, and PoD Intelligence (2×3) from barracks.", "Return to FOB and place all three on the HQ desk."],
+    tips: ["Bring a large backpack! You need enough inventory grid space for 3×3 + 3×5 + 2×3 items."],
+    quote: "Dulles: Speed, surprise, and violence of action. Move in, assault the station, and exploit the site for intel."
+  },
+  {
+    id: "rono_into_unknown", map: "Ronograd", col: 6, row: 1, diff: "EXTREME",
+    name: "Into the Unknown", giver: "Dr. Lakewell", loc: "Ronograd City Hospital -> FOB",
+    prereqs: ["rono_legacy"], cr: 1000, xp: 1500, cm: 0, rm: 0, eq: 0,
+    loot: "MERCURY-2 Circular Patches",
+    routes: [],
+    desc: "Investigate evidence of PoD biological weapons in the bunker beneath Ronograd City Hospital.",
+    steps: ["Reach the abandoned hospital in Ronograd City and collect the Bunker 5 Elevator Key.", "Take the elevator down into Bunker 5 and unlock the security gate.", "Collect the Chemical-Hazard Container (4×3) and deliver it to Dr. Lakewell's lab at FOB."],
+    tips: ["Watch out for Smokers and dense PoD guards in the underground hospital lab."],
+    quote: "Dr. Lakewell: Follow up on new evidence of the Patriots of Democracy's biological weapons program."
+  },
+  {
+    id: "rono_in_cahoots", map: "Ronograd", col: 6, row: 2, diff: "MEDIUM",
+    name: "In Cahoots", giver: "Ops Dir. R.M. Dulles", loc: "Ronograd City",
+    prereqs: ["rono_mount_pandora"], cr: 600, xp: 600, cm: 0, rm: 2, eq: 0, loot: "3× Equipment on Repeat",
+    routes: ["groza"],
+    desc: "Eliminate two high-value targets meeting in Ronograd City.",
+    steps: ["Infiltrate Ronograd City.", "Locate and eliminate both High-Value Targets (HVTs).", "Exfiltrate."],
+    tips: ["Sniping from the bridge or adjacent rooftops avoids triggering the entire apartment complex."],
+    quote: "Dulles: Eliminate two high-value targets in Ronograd City."
+  },
+  {
+    id: "rono_priority_target", map: "Ronograd", col: 6, row: 3, diff: "HARD",
+    name: "Priority Target", giver: "Ops Dir. R.M. Dulles", loc: "Lesdolina -> FOB",
+    prereqs: ["rono_mount_pandora"], cr: 600, xp: 600, cm: 0, rm: 0, eq: 2, loot: "",
+    routes: ["groza"],
+    desc: "Eliminate a PoD liaison HVT in Lesdolina and recover his PDA.",
+    steps: ["Reach Lesdolina in central Ronograd.", "Eliminate the High-Value Target and recover the PoD Liaison's PDA (1×2).", "Return the PDA to FOB."],
+    tips: ["Watch out for watchtower snipers and road patrols around the windmill and church."],
+    quote: "Dulles: Eliminate a high-value target in Lesdolina."
+  },
+  {
+    id: "rono_sunken_hope", map: "Ronograd", col: 7, row: 1, diff: "HARD",
+    name: "Sunken Hope", giver: "Dr. Lakewell", loc: "Naval Base",
+    prereqs: ["rono_into_unknown", "rono_in_cahoots"], cr: 1000, xp: 1500, cm: 0, rm: 0, eq: 5, loot: "",
+    routes: [],
+    desc: "Destroy three caches of barrels containing biological weapons at the Naval Base.",
+    steps: ["Reach the Naval Base.", "Place explosives on three biological weapon barrel caches near the command building (guarded by Smokers).", "Leave the area."],
+    tips: ["Clear the Smokers guarding the pit before dropping down to plant charges."],
+    quote: "Dr. Lakewell: Destroy barrels containing biological weapons at the Naval Base."
+  },
+  {
+    id: "rono_sleight", map: "Ronograd", col: 7, row: 3, diff: "HARD",
+    name: "Sleight of Hand", giver: "Ops Dir. R.M. Dulles", loc: "Fort Ronograd -> FOB",
+    prereqs: ["rono_priority_target", "rono_in_cahoots"], cr: 3000, xp: 3000, cm: 0, rm: 0, eq: 5, loot: "",
+    routes: ["groza"],
+    desc: "Infiltrate Fort Ronograd's Administration Building and steal the Ronograd Hospital & Bunker 5 records.",
+    steps: ["Pick up the Rusted Key to enter via the drainage pipe under Fort Ronograd (or breach directly).", "Locate the records room in the Administration Building and grab the Ronograd Hospital Records (2×3).", "Return the records to FOB."],
+    tips: ["Pays a massive 3,000 Credits, 3,000 EXP, and 5 Equipment! Stealth is recommended."],
+    quote: "Dulles: Find the records room, grab any records regarding a 'Bunker 5' or the 'Hospital'."
+  },
+  {
+    id: "rono_solo_op", map: "Ronograd", col: 8, row: 3, diff: "EXTREME",
+    name: "Solo Operation", giver: "Anonymous Sender", loc: "Naval Base",
+    prereqs: ["rono_sleight"], cr: 3000, xp: 3000, cm: 0, rm: 0, eq: 0,
+    loot: "OTs-14-1A Groza Assault Rifle",
+    routes: ["groza"],
+    desc: "Clear the entire Naval Base solo to unlock the OTs-14-1A Groza.",
+    steps: ["Deploy to the Naval Base solo.", "Complete all compound objectives and clear the Naval Base.", "Leave the area."],
+    tips: ["Pick off crane snipers and complete stealth objectives first; compound sub-objectives save even if the base resets."],
+    quote: "Anonymous Sender: Here's a doozy for ya. Clear out Naval solo. Do something really cool, yeah?"
+  },
+  {
+    id: "rono_bunker_raid", map: "Ronograd", col: 8, row: 1, diff: "EVENT",
+    name: "[Finale] ICBM Bunker Raid", giver: "UNIDB Command", loc: "Northern ICBM Bunker",
+    prereqs: [], cr: 3000, xp: 3000, cm: 0, rm: 0, eq: 0,
+    loot: "Halt the PoD ICBM Launch",
+    routes: [],
+    desc: "Server-wide finale raid unlocked after liberating all 11 Conflict Zones on Ronograd Island.",
+    steps: ["Secure all 11 Conflict Zones on Ronograd.", "Drive armored vehicles/Strikers into the northern Bunker entrance.", "Fight through the progressive blast doors, elevator, and missile silo to halt the ICBM launch, then extract at the coast."],
+    tips: ["Bring an M249/PKM, plenty of medical supplies, and armored vehicles with turrets to push the tunnels."],
+    quote: "Command: All compounds secured. Breach the northern bunker and stop the missile launch!"
+  },
+  {
+    id: "rono_bunker4", map: "Ronograd", col: 8, row: 4, diff: "EVENT",
+    name: "[Secret] Bunker 4 & Creature", giver: "Special Discovery", loc: "North of Ronograd City",
+    prereqs: [], cr: 500, xp: 500, cm: 0, rm: 0, eq: 0,
+    loot: "Bunker 4 Demolition + $250 Creature",
+    routes: [],
+    desc: "Hidden Bunker 4 demolition challenge (plant 10 C4 charges) & Ronograd Creature cave boss.",
+    steps: ["Locate Bunker 4 north of Ronograd City (spawns on private servers / rare on public).", "Plant explosives on 10 spots and escape before detonation.", "Optional: Visit Ronograd Creature's Cave to kill the machete boss ($200 + $50 headshot)."],
+    tips: ["Does not affect main island liberation progress."],
+    quote: "Special Location: Hidden facility north of Ronograd City."
+  }
+];
+
+const LOCATIONS = [
+  { map: "Sawang", name: "UNS Athens", type: "Friendly Main Base", missions: "Weiss Returns, Death From The Sky", desc: "Amphibious assault ship FOB with heli/boat spawners, HQ tablets, and Briefing Room." },
+  { map: "Sawang", name: "Nathon Town", type: "Safehouse / Conflict Zone", missions: "First Step", desc: "Town across the bay from UNS Athens. Capturing unlocks a 20-unit Safehouse & boat spawner." },
+  { map: "Sawang", name: "Lake Safehouse", type: "Safehouse / Conflict Zone", missions: "Operation Cleanup", desc: "Central island safehouse. Securing it stops mid-island enemy vehicle patrols (10.0.2)." },
+  { map: "Sawang", name: "Sawang Maha Nakhon (City)", type: "Major Conflict Zone", missions: "Attack on Sawang City, Sins of the Father, Antibodies, Power Problems, Safety Inspection pt. 2", desc: "Largest city on Sawang. Houses Dragon Hotel, Royal Bank, Hospital, and Substation." },
+  { map: "Sawang", name: "Port of Sawang (Docks)", type: "Major Conflict Zone", missions: "Positive Signal, Express Shipping, Delivery Service, Imposed Embargo", desc: "Massive northern dockyard guarded by INSOLON armor, containers, and snipers." },
+  { map: "Sawang", name: "Royal Manor", type: "Conflict Zone", missions: "Royal Repo, My House, My Rules", desc: "Princess Bayu's family estate and guest villa with Mithra GT garage and helipad." },
+  { map: "Sawang", name: "Windy Gulf Hotel", type: "Conflict Zone", missions: "Beach Holiday", desc: "Luxury resort used by Dr. Fletcher for toxoplasmosis/mutation experiments." },
+  { map: "Sawang", name: "Banana Plantation", type: "Conflict Zone", missions: "Classic Rescue, Aftermath", desc: "Central jungle plantation & makeshift lab house used by Nick, Weiss, and Lakewell." },
+  { map: "Sawang", name: "R&R Laboratory (Pharma Plant)", type: "World Event Zone", missions: "Pharma Event, Aftermath", desc: "Gas-contaminated plant. Requires a Gas Mask. Determines the HEL Raid ending." },
+  { map: "Sawang", name: "Samut Sai", type: "Conflict Zone", missions: "Express Shipping", desc: "Fortified town near Royal Manor containing the 3rd MELENCORP warehouse." },
+  { map: "Sawang", name: "Santa Lilla Mansion", type: "Mission Compound", missions: "Enemy of my Enemy", desc: "Mansion held by defecting smugglers allied with Crown Princess Bayu." },
+  { map: "Sawang", name: "Trench Camp", type: "Conflict Zone", missions: "Weiss Returns", desc: "Fortified trench network near Dr. Weiss's field pickup zone." },
+  { map: "Sawang", name: "Yāk Airbase North & South", type: "Major Conflict Zones", missions: "Island Liberation", desc: "Dual airbases defended by SAM batteries and C-RAM turrets." },
+  { map: "Sawang", name: "Helicopter Base", type: "Conflict Zone", missions: "Island Liberation", desc: "Enemy rotary-wing staging base with SAM coverage." },
+  { map: "Sawang", name: "Offshore Wind Farm", type: "Special Location", missions: "Threading the Needle, Power Problems", desc: "200-foot offshore wind turbines off the south coast." },
+  { map: "Sawang", name: "Container Cargo Ship", type: "Special Location", missions: "Sea Sick", desc: "3 km SW of UNS Athens. Houses Fletcher's floating lab and Dr. Lakewell's cell." },
+  { map: "Sawang", name: "INSOLON LPD & Hoftstadter Labs", type: "Endgame Raid Locations", missions: "Death From The Sky, HEL Lab Raid", desc: "West coast San Antonio-class warship & underground mountain laboratory." },
+  { map: "Ronograd", name: "Forward Operating Base (FOB)", type: "Friendly Main Base", missions: "Wartime Audit, Uranium Fever, Legacy of Contamination, Mount Pandora, Into the Unknown, Sleight of Hand", desc: "Main UNIDB airbase in western Ronograd with HQ building and Dr. Lakewell's portable lab." },
+  { map: "Ronograd", name: "Pushkino", type: "Conflict Zone", missions: "Blackhawk Rescue", desc: "Southwestern settlement near Sochraina featuring a crashed Black Hawk helicopter." },
+  { map: "Ronograd", name: "Kozlovka", type: "Conflict Zone", missions: "Pinpoint", desc: "Coastal village in SW Ronograd near the Depot with a church and apartment block." },
+  { map: "Ronograd", name: "Depot", type: "Conflict Zone", missions: "Wartime Audit, Legacy of Contamination", desc: "Southern supply depot storing crates and old tanks guarded by the RLF." },
+  { map: "Ronograd", name: "Quarry", type: "Conflict Zone", missions: "Uranium Fever", desc: "Southern industrial mining pit with underground mineshaft tunnels." },
+  { map: "Ronograd", name: "Department of Utilities", type: "Conflict Zone & Forward Spawn", missions: "Legacy of Contamination", desc: "Northwestern power plant. Becomes a friendly vehicle spawn once secured." },
+  { map: "Ronograd", name: "Mountain Radar Station", type: "Conflict Zone", missions: "Mount Pandora", desc: "NW mountain peak radar array, radome, and underground command center held by PoD." },
+  { map: "Ronograd", name: "Lesdolina", type: "Conflict Zone", missions: "Priority Target", desc: "Central rural village with barns, windmill, and church surrounded by mountains." },
+  { map: "Ronograd", name: "Ronograd City", type: "Major Conflict Zone & Spawn", missions: "In Cahoots, Into the Unknown, CONVENIENCE STORE RESCUE", desc: "Large eastern city with apartment complex, bridge, Zoya's Supermart, and Hospital (Bunker 5)." },
+  { map: "Ronograd", name: "Sochraina City", type: "Conflict Zone & Forward Spawn", missions: "Island Liberation", desc: "Southern coastal city defended by mined roads, snipers, and mortars." },
+  { map: "Ronograd", name: "Fort Ronograd", type: "Major Conflict Zone", missions: "Sleight of Hand", desc: "NW military fortress held by PoD with SAM systems, sewer entrance, and Admin Building." },
+  { map: "Ronograd", name: "Naval Base", type: "Major Conflict Zone", missions: "Sunken Hope, Solo Operation", desc: "SE military port with cranes, containers, bio-weapon pit, and submarine repair dockyard." },
+  { map: "Ronograd", name: "Northern ICBM Bunker", type: "Special Raid Location", missions: "ICBM Bunker Raid", desc: "Hidden northern missile silo accessible only after all 11 Conflict Zones are secured." },
+  { map: "Ronograd", name: "Bunker 4", type: "Special Location", missions: "Bunker 4 Demolition", desc: "Hidden bunker north of Ronograd City requiring 10 explosive charges." },
+  { map: "Ronograd", name: "Ronograd Creature's Cave", type: "Special Location", missions: "Boss Hunt", desc: "Hidden cave housing the high-HP machete-wielding Ronograd Creature." }
+];
+
+let doneSet = new Set(JSON.parse(localStorage.getItem("brm5_done_v2") || "[]"));
+let activeRoute = "all";
+let hoveredNodeId = null;
+
+// ================= INTERACTIVE PAN & ZOOM STATE =================
+let panX = 24;
+let panY = 16;
+let zoom = 0.72;
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 2.2;
+
+let isPanning = false;
+let didDragMove = false;
+let startMouseX = 0;
+let startMouseY = 0;
+let startPanX = 0;
+let startPanY = 0;
+
+const viewport = document.getElementById("v-roadmap");
+const world = document.getElementById("canvas-world");
+
+function applyTransform(smooth = false) {
+  world.style.transition = smooth ? "transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)" : "none";
+  world.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  document.getElementById("zoom-label").textContent = Math.round(zoom * 100) + "%";
+  viewport.style.backgroundPosition = `0 0, ${panX}px ${panY}px, ${panX}px ${panY}px`;
+  const gridScale = Math.max(12, Math.round(36 * zoom));
+  viewport.style.backgroundSize = `100% 100%, ${gridScale}px ${gridScale}px, ${gridScale}px ${gridScale}px`;
+}
+
+// Suppress right-click menu on the interactive roadmap
+viewport.addEventListener("contextmenu", e => e.preventDefault());
+
+// Mouse Down: Right-Click (button 2), Middle-Click (button 1), or Left-Click (button 0) on canvas
+viewport.addEventListener("mousedown", e => {
+  if (e.target.closest(".canvas-hud-right")) return;
+  // Allow Right-Click anywhere on the canvas (even over cards!) or Left/Middle click
+  if (e.button === 2 || e.button === 1 || e.button === 0) {
+    isPanning = true;
+    didDragMove = false;
+    startMouseX = e.clientX;
+    startMouseY = e.clientY;
+    startPanX = panX;
+    startPanY = panY;
+    viewport.classList.add("panning");
+    if (e.button === 1) e.preventDefault();
+  }
+});
+
+window.addEventListener("mousemove", e => {
+  if (!isPanning) return;
+  const dx = e.clientX - startMouseX;
+  const dy = e.clientY - startMouseY;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+    didDragMove = true;
+  }
+  panX = startPanX + dx;
+  panY = startPanY + dy;
+  applyTransform(false);
+});
+
+window.addEventListener("mouseup", () => {
+  if (isPanning) {
+    isPanning = false;
+    viewport.classList.remove("panning");
+  }
+});
+
+// Mouse Wheel Zoom anchored at cursor
+viewport.addEventListener("wheel", e => {
+  e.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // World coordinates under cursor before zoom
+  const worldX = (mouseX - panX) / zoom;
+  const worldY = (mouseY - panY) / zoom;
+
+  const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+  const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * zoomFactor));
+
+  panX = mouseX - worldX * nextZoom;
+  panY = mouseY - worldY * nextZoom;
+  zoom = nextZoom;
+
+  applyTransform(false);
+}, { passive: false });
+
+function zoomBy(delta) {
+  const rect = viewport.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const worldX = (cx - panX) / zoom;
+  const worldY = (cy - panY) / zoom;
+  const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom + delta));
+  panX = cx - worldX * nextZoom;
+  panY = cy - worldY * nextZoom;
+  zoom = nextZoom;
+  applyTransform(true);
+}
+
+function resetCamera(targetZoom = 1) {
+  zoom = targetZoom;
+  panX = 28;
+  panY = 18;
+  applyTransform(true);
+}
+
+function focusSection(which) {
+  const wrap = document.getElementById(which === "ronograd" ? "wrap-ronograd" : "wrap-sawang");
+  if (!wrap || wrap.style.display === "none") {
+    setTab(which, document.querySelector(`.tabs .btn:nth-child(${which === "ronograd" ? 3 : 2})`));
+  }
+  zoom = 0.72;
+  panX = 24;
+  panY = -(wrap.offsetTop * zoom) + 20;
+  applyTransform(true);
+}
+
+function fitToScreen() {
+  const rect = viewport.getBoundingClientRect();
+  const w = world.scrollWidth || 2700;
+  const h = world.scrollHeight || 1200;
+  const scaleX = (rect.width - 40) / w;
+  const scaleY = (rect.height - 40) / h;
+  zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(scaleX, scaleY)));
+  panX = Math.max(16, (rect.width - w * zoom) / 2);
+  panY = 16;
+  applyTransform(true);
+}
+
+function focusNode(id) {
+  const el = document.getElementById("node-" + id);
+  if (!el) return;
+  const stage = el.parentElement;
+  const wrap = stage.parentElement;
+  const nodeWorldX = 60 + stage.offsetLeft + el.offsetLeft + el.offsetWidth / 2;
+  const nodeWorldY = 40 + wrap.offsetTop + stage.offsetTop + el.offsetTop + el.offsetHeight / 2;
+
+  const rect = viewport.getBoundingClientRect();
+  zoom = Math.max(zoom, 0.9);
+  panX = (rect.width / 2) - nodeWorldX * zoom - 140;
+  panY = (rect.height / 2) - nodeWorldY * zoom;
+  applyTransform(true);
+}
+
+// ================= DATA & RENDERING =================
+function saveDone() {
+  localStorage.setItem("brm5_done_v2", JSON.stringify([...doneSet]));
+}
+
+function toggleDone(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (doneSet.has(id)) doneSet.delete(id);
+  else doneSet.add(id);
+  saveDone();
+  renderAll();
+}
+
+function clearSaved() {
+  doneSet.clear();
+  saveDone();
+  renderAll();
+}
+
+function isReady(m) {
+  if (doneSet.has(m.id)) return false;
+  return m.prereqs.every(p => doneSet.has(p));
+}
+
+function buildStage(mapName, stageId, svgId) {
+  const stage = document.getElementById(stageId);
+  stage.querySelectorAll(".m-card").forEach(e => e.remove());
+
+  const list = MISSIONS.filter(m => m.map === mapName);
+  list.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "m-card";
+    card.id = "node-" + m.id;
+    card.style.gridColumn = m.col;
+    card.style.gridRow = m.row + 1;
+
+    if (doneSet.has(m.id)) card.classList.add("done");
+    else if (isReady(m)) card.classList.add("ready");
+
+    if (activeRoute !== "all") {
+      if (m.routes.includes(activeRoute)) card.classList.add("hl-" + activeRoute);
+      else card.classList.add("dim");
+    }
+
+    const prereqNames = m.prereqs.length
+      ? m.prereqs.map(pid => (MISSIONS.find(x => x.id === pid) || {}).name || pid).join(" + ")
+      : "None (Start)";
+
+    const resParts = [`${m.cr} Cr`, `${m.xp} EXP`];
+    if (m.cm) resParts.push(`${m.cm} Const.Mat`);
+    if (m.rm) resParts.push(`${m.rm} RareMet`);
+    if (m.eq) resParts.push(`${m.eq} Equip`);
+
+    card.innerHTML = `
+      <div class="m-top">
+        <div class="m-title">${m.name}</div>
+        <div class="chk" onclick="toggleDone('${m.id}', event)" title="Mark completed">✓</div>
+      </div>
+      <div class="m-badges">
+        <span class="diff d-${m.diff}">${m.diff}</span>
+        <span class="giver-pill">${m.giver}</span>
+      </div>
+      <div class="m-need"><strong>Needs:</strong> ${prereqNames}</div>
+      <div class="m-desc">${m.desc}</div>
+      ${m.loot ? `<span class="loot-tag">★ ${m.loot}</span>` : ""}
+      <div class="m-rew">${resParts.join(" • ")}</div>
+    `;
+
+    card.addEventListener("click", () => {
+      if (didDragMove) return; // Ignore click if user was dragging the map
+      openDrawer(m.id);
+    });
+
+    card.addEventListener("mouseenter", () => {
+      hoveredNodeId = m.id;
+      highlightConnectedCards(m.id);
+      drawLines(mapName, stageId, svgId);
+    });
+
+    card.addEventListener("mouseleave", () => {
+      hoveredNodeId = null;
+      highlightConnectedCards(null);
+      drawLines(mapName, stageId, svgId);
+    });
+
+    stage.appendChild(card);
+  });
+}
+
+function highlightConnectedCards(id) {
+  document.querySelectorAll(".m-card.hover-linked").forEach(el => el.classList.remove("hover-linked"));
+  if (!id) return;
+  const m = MISSIONS.find(x => x.id === id);
+  if (!m) return;
+  m.prereqs.forEach(pid => {
+    const el = document.getElementById("node-" + pid);
+    if (el) el.classList.add("hover-linked");
+  });
+  MISSIONS.filter(x => x.prereqs.includes(id)).forEach(u => {
+    const el = document.getElementById("node-" + u.id);
+    if (el) el.classList.add("hover-linked");
+  });
+}
+
+// Uses unscaled layout offsets (offsetLeft/offsetTop) so SVG lines stay 100% accurate at ANY zoom level
+function drawLines(mapName, stageId, svgId) {
+  const stage = document.getElementById(stageId);
+  const svg = document.getElementById(svgId);
+  if (!stage || !svg) return;
+
+  svg.setAttribute("width", stage.offsetWidth);
+  svg.setAttribute("height", stage.offsetHeight);
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="arr-default-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#3a5278" />
+      </marker>
+      <marker id="arr-done-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#2ecc71" />
+      </marker>
+      <marker id="arr-active-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#38bdf8" />
+      </marker>
+      <marker id="arr-pink-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#f472b6" />
+      </marker>
+      <marker id="arr-gold-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#facc15" />
+      </marker>
+      <marker id="arr-orange-${mapName}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,1 L7,4 L0,7 Z" fill="#fb923c" />
+      </marker>
+    </defs>
+  `;
+
+  const list = MISSIONS.filter(m => m.map === mapName);
+  list.forEach(target => {
+    target.prereqs.forEach(srcId => {
+      const srcEl = document.getElementById("node-" + srcId);
+      const tgtEl = document.getElementById("node-" + target.id);
+      if (!srcEl || !tgtEl) return;
+
+      const x1 = srcEl.offsetLeft + srcEl.offsetWidth;
+      const y1 = srcEl.offsetTop + srcEl.offsetHeight / 2;
+      const x2 = tgtEl.offsetLeft;
+      const y2 = tgtEl.offsetTop + tgtEl.offsetHeight / 2;
+      const dx = Math.max(32, (x2 - x1) * 0.5);
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`);
+      path.setAttribute("fill", "none");
+
+      let stroke = "#3a5278";
+      let width = "2.2";
+      let marker = `url(#arr-default-${mapName})`;
+      let isFlow = false;
+
+      const isHoverLinked = hoveredNodeId && (hoveredNodeId === srcId || hoveredNodeId === target.id);
+
+      if (isHoverLinked) {
+        stroke = "#38bdf8";
+        width = "3.4";
+        marker = `url(#arr-active-${mapName})`;
+        isFlow = true;
+      } else if (doneSet.has(srcId) && doneSet.has(target.id)) {
+        stroke = "#2ecc71";
+        width = "2.8";
+        marker = `url(#arr-done-${mapName})`;
+      } else if (activeRoute !== "all" && target.routes.includes(activeRoute) && (MISSIONS.find(x => x.id === srcId)?.routes || []).includes(activeRoute)) {
+        if (activeRoute === "dfts") { stroke = "#f472b6"; marker = `url(#arr-pink-${mapName})`; }
+        else if (activeRoute === "azorian") { stroke = "#facc15"; marker = `url(#arr-gold-${mapName})`; }
+        else if (activeRoute === "groza") { stroke = "#fb923c"; marker = `url(#arr-orange-${mapName})`; }
+        else { stroke = "#38bdf8"; marker = `url(#arr-active-${mapName})`; }
+        width = "3.2";
+        isFlow = true;
+      }
+
+      path.setAttribute("stroke", stroke);
+      path.setAttribute("stroke-width", width);
+      path.setAttribute("marker-end", marker);
+
+      if (isFlow) {
+        path.setAttribute("class", "flow-line-active");
+      } else if (srcId === "sea_sick" && target.id === "death_from_the_sky") {
+        path.setAttribute("stroke-dasharray", "6,4");
+      }
+
+      svg.appendChild(path);
+    });
+  });
+}
+
+function updateStats() {
+  let cr = 0, xp = 0, cm = 0, rm = 0, eq = 0;
+  MISSIONS.forEach(m => {
+    if (doneSet.has(m.id)) {
+      cr += m.cr; xp += m.xp; cm += m.cm; rm += m.rm; eq += m.eq;
+    }
+  });
+  document.getElementById("st-done").textContent = `${doneSet.size} / ${MISSIONS.length}`;
+  document.getElementById("st-cr").textContent = "$" + cr.toLocaleString();
+  document.getElementById("st-xp").textContent = xp.toLocaleString();
+  document.getElementById("st-cm").textContent = cm;
+  document.getElementById("st-rm").textContent = rm;
+  document.getElementById("st-eq").textContent = eq;
+}
+
+function openDrawer(id, panTo = false) {
+  const m = MISSIONS.find(x => x.id === id);
+  if (!m) return;
+  if (panTo) focusNode(id);
+
+  const unlocks = MISSIONS.filter(x => x.prereqs.includes(m.id));
+  const isDone = doneSet.has(m.id);
+
+  document.getElementById("drawer-body").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+      <div>
+        <div class="m-badges" style="margin-bottom:6px;">
+          <span class="diff d-${m.diff}">${m.diff}</span>
+          <span class="giver-pill">${m.map}</span>
+          <span class="giver-pill">${m.giver}</span>
+        </div>
+        <h2 style="color:#fff;font-size:1.25rem;">${m.name}</h2>
+        <div style="font-size:0.8rem;color:var(--muted);">📍 Location: <strong style="color:#fff">${m.loc}</strong></div>
+      </div>
+      <button class="btn" onclick="closeDrawer()">✕</button>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn ${isDone ? 'active' : ''}" style="flex:1;padding:9px;" onclick="toggleDone('${m.id}'); openDrawer('${m.id}');">
+        ${isDone ? '✓ Completed (Click to Unmark)' : '☐ Mark Mission Completed'}
+      </button>
+      <button class="btn" onclick="focusNode('${m.id}')" title="Center camera on this mission">🎯 Center on Map</button>
+    </div>
+
+    <div class="d-sec">
+      <h3>💰 Rewards</h3>
+      <p style="font-size:0.85rem;color:#6ee7b7;font-weight:700;">
+        $${m.cr.toLocaleString()} Credits • ${m.xp.toLocaleString()} EXP
+        ${m.cm ? ` • ${m.cm}× Construction Materials` : ""}
+        ${m.rm ? ` • ${m.rm}× Rare Metals` : ""}
+        ${m.eq ? ` • ${m.eq}× Equipment` : ""}
+      </p>
+      ${m.loot ? `<div style="margin-top:6px;"><span class="loot-tag">★ Exclusive Unlock: ${m.loot}</span></div>` : ""}
+    </div>
+
+    <div class="d-sec">
+      <h3>🔗 Prerequisites & Unlocks (Click to Jump)</h3>
+      <div style="font-size:0.8rem;margin-bottom:6px;">
+        <strong>Requires:</strong>
+        ${m.prereqs.length ? m.prereqs.map(p => {
+          const pm = MISSIONS.find(x => x.id === p);
+          return `<span class="chip" onclick="openDrawer('${p}', true)">${pm ? pm.name : p}</span>`;
+        }).join("") : '<span style="color:var(--muted)">None (Available from Start)</span>'}
+      </div>
+      <div style="font-size:0.8rem;">
+        <strong>Unlocks:</strong>
+        ${unlocks.length ? unlocks.map(u => `<span class="chip" onclick="openDrawer('${u.id}', true)">${u.name}</span>`).join("") : '<span style="color:var(--muted)">Terminal Mission</span>'}
+      </div>
+    </div>
+
+    <div class="d-sec">
+      <h3>📋 Step-by-Step Objectives</h3>
+      <ol class="d-list">${m.steps.map(s => `<li>${s}</li>`).join("")}</ol>
+    </div>
+
+    <div class="d-sec">
+      <h3>💡 Tactical Tips & Notes</h3>
+      <ul class="d-list">${m.tips.map(t => `<li>${t}</li>`).join("")}</ul>
+    </div>
+
+    <div class="d-sec">
+      <h3>🎙️ Briefing / Key Dialogue</h3>
+      <div class="quote">${m.quote}</div>
+    </div>
+  `;
+
+  document.getElementById("backdrop").classList.add("open");
+  document.getElementById("drawer").classList.add("open");
+}
+
+function closeDrawer() {
+  document.getElementById("backdrop").classList.remove("open");
+  document.getElementById("drawer").classList.remove("open");
+}
+
+function setRoute(r) {
+  activeRoute = r;
+  document.querySelectorAll("[id^='rt-']").forEach(b => b.classList.remove("active"));
+  const btn = document.getElementById("rt-" + r);
+  if (btn) btn.classList.add("active");
+  renderAll();
+  if (r === "groza") focusSection("ronograd");
+  else if (r === "dfts" || r === "azorian" || r === "m723") focusSection("sawang");
+}
+
+function filterNodes() {
+  const diff = document.getElementById("f-diff").value;
+  const q = document.getElementById("f-search").value.trim().toLowerCase();
+
+  MISSIONS.forEach(m => {
+    const el = document.getElementById("node-" + m.id);
+    if (!el) return;
+    const matchDiff = diff === "ALL" || m.diff === diff;
+    const matchQ = !q || m.name.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q) || m.loc.toLowerCase().includes(q) || m.loot.toLowerCase().includes(q);
+    if (matchDiff && matchQ) {
+      if (activeRoute === "all" || m.routes.includes(activeRoute)) el.classList.remove("dim");
+    } else {
+      el.classList.add("dim");
+    }
+  });
+}
+
+function setTab(mode, btn) {
+  document.querySelectorAll(".tabs .btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+
+  document.querySelectorAll(".view-section").forEach(s => s.classList.remove("active"));
+
+  if (mode === "both" || mode === "sawang" || mode === "ronograd") {
+    document.getElementById("v-roadmap").classList.add("active");
+    document.getElementById("wrap-sawang").style.display = (mode === "both" || mode === "sawang") ? "block" : "none";
+    document.getElementById("wrap-ronograd").style.display = (mode === "both" || mode === "ronograd") ? "block" : "none";
+    requestAnimationFrame(() => {
+      drawLines("Sawang", "stage-sawang", "svg-sawang");
+      drawLines("Ronograd", "stage-ronograd", "svg-ronograd");
+      resetCamera(0.72);
+    });
+  } else if (mode === "guides") {
+    document.getElementById("v-guides").classList.add("active");
+  } else if (mode === "locations") {
+    document.getElementById("v-locations").classList.add("active");
+  } else if (mode === "table") {
+    document.getElementById("v-table").classList.add("active");
+  }
+}
+
+function renderLocationsAndTable() {
+  const locGrid = document.getElementById("loc-grid");
+  locGrid.innerHTML = LOCATIONS.map(l => `
+    <div class="box">
+      <div class="m-badges" style="margin-bottom:6px;">
+        <span class="giver-pill" style="color:var(--cyan)">${l.map}</span>
+        <span class="giver-pill">${l.type}</span>
+      </div>
+      <h2>${l.name}</h2>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:6px;">${l.desc}</p>
+      <div style="font-size:0.75rem;color:#6ee7b7;"><strong>Missions:</strong> ${l.missions}</div>
+    </div>
+  `).join("");
+
+  const tbody = document.getElementById("tbl-body");
+  tbody.innerHTML = MISSIONS.map(m => {
+    const pNames = m.prereqs.length
+      ? m.prereqs.map(pid => (MISSIONS.find(x => x.id === pid) || {}).name || pid).join(", ")
+      : "None";
+    return `
+      <tr onclick="openDrawer('${m.id}')" style="cursor:pointer;">
+        <td onclick="toggleDone('${m.id}', event)"><input type="checkbox" ${doneSet.has(m.id) ? "checked" : ""} /></td>
+        <td><strong>${m.map}</strong></td>
+        <td style="color:#fff;font-weight:700;">${m.name}</td>
+        <td><span class="diff d-${m.diff}">${m.diff}</span></td>
+        <td>${m.giver}</td>
+        <td>${pNames}</td>
+        <td>${m.loc}</td>
+        <td style="color:#6ee7b7">${m.cr} Cr, ${m.xp} EXP ${m.loot ? `• ★ ${m.loot}` : ""}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderAll() {
+  buildStage("Sawang", "stage-sawang", "svg-sawang");
+  buildStage("Ronograd", "stage-ronograd", "svg-ronograd");
+  updateStats();
+  renderLocationsAndTable();
+  filterNodes();
+  requestAnimationFrame(() => {
+    drawLines("Sawang", "stage-sawang", "svg-sawang");
+    drawLines("Ronograd", "stage-ronograd", "svg-ronograd");
+  });
+}
+
+window.addEventListener("resize", () => {
+  drawLines("Sawang", "stage-sawang", "svg-sawang");
+  drawLines("Ronograd", "stage-ronograd", "svg-ronograd");
+});
+
+renderAll();
+applyTransform(false);
+</script>
+</body>
+</html>
